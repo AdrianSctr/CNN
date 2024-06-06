@@ -1,1 +1,1 @@
-Handmade CNN
+Handmade CNN with numpy.
