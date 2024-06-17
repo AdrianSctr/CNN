@@ -15,22 +15,20 @@ class Dense:
         self.reg_type = reg_type
         self.lambda_reg = lambda_reg
         self.alpha_leaky_relu = alpha_leaky_relu
+        
         if activation == "softmax":
-            self.soft = Softmax()
+            self.activation_function = Softmax()
         elif activation == "sigmoid":
-            self.sig = Sigmoid()
-        self.activations = None
+            self.activation_function = Sigmoid()
+        else:
+            self.activation_function = None
         
     def initialize(self, input_shape):
         input_units = input_shape[1]
         if self.activation == 'relu':
             self.weights = np.random.randn(input_units, self.units) * np.sqrt(2. / input_units)
-
-        #elif self.activation == 'softmax':
-            #self.weights = np.random.randn(input_units, self.units) * np.sqrt(2. / (input_units + self.units))
         else:
-            self.weights = np.random.randn(input_units, self.units) * 0.01 #np.sqrt(2. / input_units) 
-        #print("init:",self.weights.shape)
+            self.weights = np.random.randn(input_units, self.units) * 0.01  
         self.bias = np.zeros((1, self.units))
 
     def forward(self, input):
@@ -44,30 +42,26 @@ class Dense:
             self.activations = np.maximum(0, output)
         elif self.activation == 'leaky_relu':
             self.activations = np.where(output > 0, output, output * self.alpha_leaky_relu)
-        elif self.activation == 'softmax':
-            #soft = Softmax()
-            self.activations = self.soft.forward(output)
-        elif self.activation == 'sigmoid':
-            #sig = Sigmoid()
-            self.activations = self.sig.forward(output)
+        elif self.activation in ['softmax', 'sigmoid']:
+            self.activations = self.activation_function.forward(output)
+        else:
+            self.activations = output
         return self.activations
 
     def backward(self, grad_output, learning_rate):
-        """
+       
         if self.activation == 'relu':
             grad_output = grad_output * (self.activations > 0)
         elif self.activation == 'leaky_relu':
             grad_output = grad_output * np.where(self.activations > 0, 1, self.alpha_leaky_relu)
         elif self.activation == 'softmax':
-            #soft = Softmax()
-            grad_output = self.soft.backward(grad_output, learning_rate)
+            grad_output = grad_output
         elif self.activation == 'sigmoid':
-            #sig = Sigmoid()
-            grad_output = self.sig.backward(grad_output, learning_rate)
-        """
+            grad_output = self.activation_function.backward(grad_output,learning_rate)
+
+        grad_weights = np.dot(self.input.T, grad_output)
         grad_input = np.dot(grad_output, self.weights.T)
         #print("b:",self.input.shape,grad_output)
-        grad_weights = np.dot(self.input.T, grad_output)
         grad_bias = np.sum(grad_output, axis=0, keepdims=True)
         #print(grad_weights.shape,learning_rate)
         
