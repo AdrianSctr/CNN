@@ -16,7 +16,7 @@ class Conv2D:
         
         self.biases = np.zeros((1,1,1,num_filters))
         self.stride = stride
-        self.padding = 0
+        self.padding = padding
         self.input = None
         self.activation = activation
         self.optimizer = optimizer
@@ -51,6 +51,8 @@ class Conv2D:
             self.activations = np.maximum(0,output)
         elif self.activation == 'leaky_relu':
             self.activations = np.where(output > 0, output, output * self.alpha_leaky_relu)
+        else:
+            self.activations = output
         #print(output.shape)
         self.convolution.append(self.activations)
         return self.activations
@@ -60,7 +62,7 @@ class Conv2D:
         
         batch_size, output_height, output_width, _ = grad_output.shape
         _, input_height, input_width, input_channels = self.input.shape
-        #padded_input = np.pad(grad_output, ((0, 0), (self.padding, self.padding), (self.padding, self.padding), (0, 0)), mode='constant')
+        padded_input = np.pad(self.input, ((0, 0), (self.padding, self.padding), (self.padding, self.padding), (0, 0)), mode='constant')
         grad_filters = np.zeros_like(self.filters)
         grad_biases = np.zeros_like(self.biases)
         grad_input = np.zeros_like(self.input)
@@ -83,15 +85,15 @@ class Conv2D:
                         w_end = w_start + self.filter_size
                         
                         # Mise à jour des gradients des filtres
-                        window = self.input[b, h_start:h_end, w_start:w_end, :]
+                        window = padded_input[b, h_start:h_end, w_start:w_end, :]
                         grad_filters[f] += np.sum(grad_output[b, i, j, f] * window, axis=(0,1,2), keepdims=True)
                         # Mise à jour du gradient de l'entrée (ce qui sera renvoyé à la couche précédente)
-                        grad_input[b, h_start:h_end, w_start:w_end, :] += np.sum(grad_output[b, i, j, f] * self.filters[f], axis=(0,1,2))
+                        grad_input[b, h_start:h_end, w_start:w_end, :] += grad_output[b, i, j, f] * self.filters[f]
         
         if self.reg_type =='L1':
-                self.filters -= learning_rate * (grad_filters + self.lambda_reg * np.sign(self.filters))
+                grad_filters  += learning_rate * (grad_filters + self.lambda_reg * np.sign(self.filters))
         elif self.reg_type == 'L2':
-                self.filters -= learning_rate * (grad_filters + self.lambda_reg * 2 * self.filters)
+                grad_filters  += learning_rate * (grad_filters + self.lambda_reg * 2 * self.filters)
                  
         if self.optimizer:
             params = [self.filters, self.biases]
@@ -101,6 +103,9 @@ class Conv2D:
         else:
             self.filters -= learning_rate * grad_filters
             self.biases -= learning_rate * grad_biases #/ batch_size
-       
             
-        return grad_input[:, self.padding:-self.padding, self.padding:-self.padding, :]
+        
+        if self.padding != 0:
+            grad_input = grad_input[:, self.padding:-self.padding, self.padding:-self.padding, :]
+            
+        return grad_input
