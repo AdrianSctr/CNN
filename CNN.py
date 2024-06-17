@@ -18,6 +18,7 @@ class CNN:
 
     def backward(self, grad_output, learning_rate):
         for layer in reversed(self.layers):
+            #print(type(layer).__name__)
             grad_output = layer.backward(grad_output, learning_rate)
         return grad_output
 
@@ -98,7 +99,13 @@ class CNN:
         grad_loss = (predicted_output - true_output) / len(true_output)
         return grad_loss
     
+    def set_training_mode(self, training=True):
+        for layer in self.layers:
+            if isinstance(layer, Dropout):
+                layer.set_training(training)
+                
     def predict(self, X):
+        self.set_training_mode(training=False)
         # Effectue une passe avant pour obtenir les prédictions
         predictions = self.forward(X)
         #print(predictions)
